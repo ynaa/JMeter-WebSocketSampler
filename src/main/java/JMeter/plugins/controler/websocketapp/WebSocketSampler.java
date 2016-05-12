@@ -39,13 +39,13 @@ import org.eclipse.jetty.websocket.client.WebSocketClient;
  */
 public class WebSocketSampler extends AbstractSampler implements TestStateListener {
     private static final Logger log = LoggingManager.getLoggerForClass();
-    
+
     private static final String ARG_VAL_SEP = "="; // $NON-NLS-1$
     private static final String QRY_SEP = "&"; // $NON-NLS-1$
     private static final String WS_PREFIX = "ws://"; // $NON-NLS-1$
     private static final String WSS_PREFIX = "wss://"; // $NON-NLS-1$
     private static final String DEFAULT_PROTOCOL = "ws";
-    
+
     private static Map<String, ServiceSocket> connectionList;
 
     public WebSocketSampler() {
@@ -75,27 +75,27 @@ public class WebSocketSampler extends AbstractSampler implements TestStateListen
         SslContextFactory sslContexFactory = new SslContextFactory();
         sslContexFactory.setTrustAll(isIgnoreSslErrors());
         webSocketClient = new WebSocketClient(sslContexFactory);
-        
+
         webSocketClient.start();
         ClientUpgradeRequest request = new ClientUpgradeRequest();
         webSocketClient.connect(socket, uri, request);
-        
+
         int connectionTimeout = Integer.parseInt(getConnectionTimeout());
         socket.awaitOpen(connectionTimeout, TimeUnit.MILLISECONDS);
-        
+
         return socket;
     }
-    
+
     @Override
     public SampleResult sample(Entry entry) {
         ServiceSocket socket = null;
         SampleResult sampleResult = new SampleResult();
         sampleResult.setSampleLabel(getName());
         sampleResult.setDataEncoding(getContentEncoding());
-        
+
         StringBuilder errorList = new StringBuilder();
         errorList.append("\n\n[Problems]\n");
-        
+
         boolean isOK = false;
 
         String payloadMessage = getRequestPayload();
@@ -112,19 +112,20 @@ public class WebSocketSampler extends AbstractSampler implements TestStateListen
                 errorList.append(" - Connection couldn't be opened").append("\n");
                 return sampleResult;
             }
-            
+
             if (!payloadMessage.isEmpty()) {
+                System.out.println("Heisann: " + payloadMessage);
                 socket.sendMessage(payloadMessage);
             }
 
             int responseTimeout = Integer.parseInt(getResponseTimeout());
             socket.awaitClose(responseTimeout, TimeUnit.MILLISECONDS);
-            
-            
+
+
             if (socket.getResponseMessage() == null || socket.getResponseMessage().isEmpty()) {
                 sampleResult.setResponseCode("204");
             }
-            
+
             if (socket.getError() != 0) {
                 isOK = false;
                 sampleResult.setResponseCode(socket.getError().toString());
@@ -132,9 +133,9 @@ public class WebSocketSampler extends AbstractSampler implements TestStateListen
                 sampleResult.setResponseCodeOK();
                 isOK = true;
             }
-            
+
             sampleResult.setResponseData(socket.getResponseMessage(), getContentEncoding());
-            
+
         } catch (URISyntaxException e) {
             errorList.append(" - Invalid URI syntax: ").append(e.getMessage()).append("\n").append(StringUtils.join(e.getStackTrace(), "\n")).append("\n");
         } catch (IOException e) {
@@ -146,10 +147,10 @@ public class WebSocketSampler extends AbstractSampler implements TestStateListen
         } catch (Exception e) {
             errorList.append(" - Unexpected error: ").append(e.getMessage()).append("\n").append(StringUtils.join(e.getStackTrace(), "\n")).append("\n");
         }
-        
+
         sampleResult.sampleEnd();
         sampleResult.setSuccessful(isOK);
-        
+
         String logMessage = (socket != null) ? socket.getLogMessage() : "";
         sampleResult.setResponseMessage(logMessage + errorList);
         return sampleResult;
@@ -215,13 +216,13 @@ public class WebSocketSampler extends AbstractSampler implements TestStateListen
         final String port_s = getPropertyAsString("serverPort", "0");
         Integer port;
         String protocol = getProtocol();
-        
+
         try {
             port = Integer.parseInt(port_s);
         } catch (Exception ex) {
             port = 0;
         }
-        
+
         if (port == 0) {
             if ("wss".equalsIgnoreCase(protocol)) {
                 return String.valueOf(HTTPConstants.DEFAULT_HTTPS_PORT);
@@ -231,27 +232,27 @@ public class WebSocketSampler extends AbstractSampler implements TestStateListen
         }
         return port.toString();
     }
-    
+
     public void setServerPort(String port) {
         setProperty("serverPort", port);
-    }    
-    
+    }
+
     public String getResponseTimeout() {
         return getPropertyAsString("responseTimeout", "20000");
-    }    
-    
+    }
+
     public void setResponseTimeout(String responseTimeout) {
         setProperty("responseTimeout", responseTimeout);
-    }    
+    }
 
-        
+
     public String getConnectionTimeout() {
         return getPropertyAsString("connectionTimeout", "5000");
-    }    
-    
+    }
+
     public void setConnectionTimeout(String connectionTimeout) {
         setProperty("connectionTimeout", connectionTimeout);
-    }    
+    }
 
     public void setProtocol(String protocol) {
         setProperty("protocol", protocol);
@@ -386,8 +387,8 @@ public class WebSocketSampler extends AbstractSampler implements TestStateListen
             return getPropertyAsString("messageBacklog", "3");
     }
 
-    
-    
+
+
     public String getQueryString(String contentEncoding) {
         // Check if the sampler has a specified content encoding
         if (JOrphanUtils.isBlank(contentEncoding)) {

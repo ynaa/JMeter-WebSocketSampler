@@ -5,16 +5,14 @@
 package JMeter.plugins.functional.samplers.websocket;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.log.Logger;
-
 import java.util.regex.Pattern;
-
 import org.apache.jmeter.engine.util.CompoundVariable;
 import org.apache.jorphan.logging.LoggingManager;
 import org.eclipse.jetty.websocket.api.Session;
@@ -53,7 +51,7 @@ public class ServiceSocket {
     public ServiceSocket(WebSocketSampler parent, WebSocketClient client) {
         this.parent = parent;
         this.client = client;
-        
+
         //Evaluate response matching patterns in case thay contain JMeter variables (i.e. ${var})
         responsePattern = new CompoundVariable(parent.getResponsePattern()).execute();
         disconnectPattern = new CompoundVariable(parent.getCloseConncectionPattern()).execute();
@@ -82,7 +80,7 @@ public class ServiceSocket {
             }
         }
     }
-    
+
 	@OnWebSocketFrame
 	public void onFrame(Frame frame) {
 		synchronized (parent) {
@@ -91,7 +89,21 @@ public class ServiceSocket {
 			String length = " (" + frame.getPayloadLength() + " bytes)";
 			logMessage.append(" - Received frame #").append(messageCounter)
 					.append(length);
-			String frameTxt = new String(frame.getPayload().array());
+
+			String frameTxt = null;
+            if(frame.getPayload().hasArray()){
+                frameTxt = new String(frame.getPayload().array());
+            }
+            else{
+			    ByteBuffer payload = frame.getPayload();
+			    byte[] array = new byte[payload.limit()];
+			    int i = 0;
+			    while(payload.hasRemaining()){
+			        byte b = payload.get();
+			        array[i++] = b;
+			    }
+			    frameTxt = new String(array);
+			}
 			addResponseMessage("[Frame " + (messageCounter++) + "]\n"
 					+ frameTxt + "\n\n");
 
@@ -130,7 +142,7 @@ public class ServiceSocket {
             logMessage.append(" - WebSocket conection has been successfully closed by the server").append("\n");
             log.debug("Disconnect " + statusCode + ": " + reason);
         }
-        
+
         //Notify connection opening and closing latches of the closed connection
         openLatch.countDown();
         closeLatch.countDown();
@@ -142,7 +154,7 @@ public class ServiceSocket {
      */
     public String getResponseMessage() {
         String responseMessage = "";
-        
+
         //Iterate through response messages saved in the responeBacklog cache
         Iterator<String> iterator = responeBacklog.iterator();
         while (iterator.hasNext()) {
@@ -201,8 +213,8 @@ public class ServiceSocket {
         } else {
             logMessage.append(" - WebSocket session wasn't started (...that's odd)").append("\n");
         }
-        
-        
+
+
         //Stoping WebSocket client; thanks m0ro
         try {
             client.stop();
